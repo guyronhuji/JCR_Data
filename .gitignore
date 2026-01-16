@@ -1,0 +1,33 @@
+# Python and Environment
+__pycache__/
+*.py[cod]
+*$py.class
+packaging_env/
+venv/
+.env
+.venv
+lib/
+bin/
+include/
+
+# Distribution / Build
+build/
+dist/
+*.app/
+*.exe
+*.pkg
+*.dmg
+*.zip
+
+# PyInstaller - We WANT to keep the spec file usually, but if it is auto-generated and valid, we keep it. The user wants to "only push what you need". 
+# Usually spec files ARE needed for reproducible builds. I will NOT ignore .spec files.
+
+# System
+.DS_Store
+*.log
+jcr_debug.log
+
+# Output
+output/
+*_jcr_data.csv
+*_averages_*.csv

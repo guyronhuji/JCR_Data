@@ -1,0 +1,77 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install Playwright Browsers
+        run: |
+          playwright install chromium
+
+      - name: Build with PyInstaller
+        # Using the command from BUILD_GUI_WINDOWS.md
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name "JCR_Analyzer" --hidden-import "tkinter" --hidden-import "playwright" "jcr_gui.py"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JCR_Analyzer_Windows
+          path: dist/JCR_Analyzer.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install Playwright Browsers
+        run: |
+          playwright install chromium
+
+      - name: Build with PyInstaller
+        # Using the spec file which is already set up for macOS app bundle
+        run: |
+          pyinstaller jcr_gui.spec
+
+      - name: Zip Application
+        run: |
+          cd dist
+          zip -r jcr_gui_macos.zip jcr_gui.app
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JCR_Analyzer_MacOS
+          path: dist/jcr_gui_macos.zip
