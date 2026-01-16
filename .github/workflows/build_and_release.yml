@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -75,3 +77,31 @@ jobs:
         with:
           name: JCR_Analyzer_MacOS
           path: dist/jcr_gui_macos.zip
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: JCR_Analyzer_Windows
+          path: release_assets/windows
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: JCR_Analyzer_MacOS
+          path: release_assets/macos
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release_assets/windows/JCR_Analyzer.exe
+            release_assets/macos/jcr_gui_macos.zip
+          draft: true
+          prerelease: false
+          generate_release_notes: true
