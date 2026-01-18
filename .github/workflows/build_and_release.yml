@@ -33,7 +33,7 @@ jobs:
       - name: Build with PyInstaller
         # Using the command from BUILD_GUI_WINDOWS.md
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name "JCR_Analyzer" --hidden-import "tkinter" --hidden-import "playwright" "jcr_gui.py"
+          pyinstaller --noconfirm --onefile --windowed --name "JCR_Analyzer" --hidden-import "tkinter" --hidden-import "playwright" --collect-all "customtkinter" "jcr_gui.py"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
