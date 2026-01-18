@@ -219,8 +219,9 @@ class JCRApp(ctk.CTk):
             self.after(0, _update_ui)
             
         except Exception as e:
+            err_msg = str(e)
             def _err():
-                self.update_status(f"Search error: {e}")
+                self.update_status(f"Search error: {err_msg}")
                 self.search_btn.configure(state="normal")
             self.after(0, _err)
         finally:
@@ -311,8 +312,9 @@ class JCRApp(ctk.CTk):
             self.update_status("Analyzing data...")
             averages = calculate_category_averages(csv_filename, start_year)
             
-            # 5. Output Table
-            self.display_results(averages, short_name, start_year)
+            # 5. Output Table (with stats)
+            year_stats = self.extract_year_stats(data, start_year)
+            self.display_results(averages, short_name, start_year, year_stats)
             
             # 6. Save Analysis CSV
             out_filename = os.path.join(out_dir, f"{short_name}_averages_{start_year}.csv")
@@ -337,11 +339,46 @@ class JCRApp(ctk.CTk):
                 lines.append(f"{metric:<10} | {cat:<40} | {val:<20}")
         return "\n".join(lines)
 
-    def display_results(self, results, journal, year):
+    def extract_year_stats(self, data, target_year):
+        """Extracts JIF, Rank, and Quartile for the specific year."""
+        stats = {
+            "jif": data.get("metrics", {}).get("jif", "N/A"),
+            "jif_year": data.get("metrics", {}).get("year", "N/A"),
+            "categories": []
+        }
+        
+        # Look for rankings in that year
+        for cat, rows in data.get("rankings", {}).items():
+            for row in rows:
+                if row.get("year") == target_year:
+                    stats["categories"].append({
+                        "name": cat,
+                        "rank": row.get("rank", "N/A"),
+                        "quartile": row.get("quartile", "N/A")
+                    })
+        return stats
+
+    def display_results(self, results, journal, year, stats=None):
         table_str = self.result_to_table_str(results)
+        
+        stats_str = ""
+        if stats:
+            stats_str += f"Latest JIF ({stats['jif_year']}): {stats['jif']}\n"
+            stats_str += f"\nStats for {year}:\n"
+            if stats["categories"]:
+                for cat in stats["categories"]:
+                    stats_str += f"  - {cat['name']}:\n"
+                    stats_str += f"    Rank: {cat['rank']}\n"
+                    stats_str += f"    Quartile: {cat['quartile']}\n"
+            else:
+                 stats_str += "  (No specific ranking data found for this year)\n"
+            stats_str += "\n" + "="*40 + "\n\n"
+
         def update_ui():
             self.result_text.configure(state="normal")
             self.result_text.insert(tk.END, f"Analysis for {journal} (Start Year: {year})\n\n")
+            if stats_str:
+                self.result_text.insert(tk.END, stats_str)
             self.result_text.insert(tk.END, table_str)
             self.result_text.configure(state="disabled")
         self.after(0, update_ui)

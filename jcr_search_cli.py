@@ -10,6 +10,66 @@ class JCRBackend:
         self.browser = None
         self.context = None
         self.page = None
+        self.known_journals = {} # Cache for "Full Name" -> "Short Key"
+
+    def _handle_response(self, response):
+        """Background listener to intercept search API results."""
+        try:
+            # DEBUG
+            # if "jcr" in response.url:
+            #     print(f"DEBUG URL: {response.url}", file=sys.stderr)
+
+            # We are looking for JSON responses from search endpoints
+            if "search" in response.url.lower() and "json" in response.headers.get("content-type", "").lower():
+                try:
+                    data = response.json()
+                    # print(f"DEBUG: Captured search API response from {response.url}", file=sys.stderr)
+                    # print(f"DEBUG DATA: {str(data)[:600]}...", file=sys.stderr) # Truncate 
+                    
+                    # Actual structure from testing:
+                    # { "data": { "journals": [ { "journalName": "FEM ANTHROPOL", "title": "Feminist Anthropology", ... } ] } }
+
+                    items = []
+                    if "data" in data and "journals" in data["data"]:
+                        items = data["data"]["journals"]
+                    
+                    for item in items:
+                        if isinstance(item, dict):
+                            # Try to identify name and key
+                            name = item.get("title")
+                            key = item.get("journalName") # This is the short key!
+                            
+                            if name and key:
+                                self.known_journals[name.strip()] = key
+                                # Also map normalized upper/lower for easier lookup
+                                self.known_journals[name.strip().lower()] = key
+                except:
+                    pass
+        except:
+            pass
+
+    def _handle_cookie_banner(self):
+        """Attempts to close the OneTrust cookie banner if present."""
+        try:
+            # Common selectors for OneTrust
+            selectors = [
+                "button#onetrust-accept-btn-handler",
+                "button.onetrust-close-btn-handler",
+                "button:has-text('Accept All')",
+                "button:has-text('Accept Cookies')"
+            ]
+            for sel in selectors:
+                try:
+                    btn = self.page.locator(sel).first
+                    if btn.is_visible(timeout=500):
+                        print("Found cookie banner, clicking accept...", file=sys.stderr)
+                        btn.click()
+                        self.page.wait_for_timeout(500) # Wait for animation
+                        return
+                except:
+                    pass
+        except:
+            pass
 
     def start_session(self):
         """Launches the browser and navigates to JCR home."""
@@ -17,7 +77,6 @@ class JCRBackend:
         self.playwright = sync_playwright().start()
         
         launch_args = {
-            "headless": True,
             "args": ["--no-sandbox", "--disable-blink-features=AutomationControlled"]
         }
         
@@ -32,45 +91,43 @@ class JCRBackend:
             viewport={"width": 1280, "height": 720}
         )
         self.page = self.context.new_page()
+        # Hook up the listener
+        self.page.on("response", self._handle_response)
+        
         try:
-            self.page.goto("https://jcr.clarivate.com/jcr/home", wait_until="networkidle", timeout=60000)
-            # Handle cookie banner if present
-            try:
-                cookie_btn = self.page.locator("button#onetrust-accept-btn-handler, button:has-text('Accept All')").first
-                if cookie_btn.is_visible(timeout=5000):
-                    cookie_btn.click()
-            except:
-                pass
+            # use domcontentloaded instead of networkidle for speed
+            self.page.goto("https://jcr.clarivate.com/jcr/home", wait_until="domcontentloaded", timeout=60000)
+            self._handle_cookie_banner()
         except Exception as e:
             raise Exception(f"Failed to load JCR home: {e}")
 
     def search_journal(self, query):
         """Enters query and returns a list of suggested journal names."""
-    def search_journal(self, query):
-        """Enters query and returns a list of suggested journal names."""
-        if not self.page:
-            self.start_session()
-        else:
-            # unique check to avoid reloading if we are already there and ready, 
-            # but simpler to just reload to be safe and clear state
+        # Try to find search input immediately on current page
+        search_input_sel = "input[placeholder*='journal'], input[placeholder*='Journal'], input[type='text'].mat-input-element"
+        search_input = self.page.locator(search_input_sel).first
+        
+        if not search_input.is_visible():
+            # If not found, then go home
+            print("Search bar not found, navigating to home...", file=sys.stderr)
+            self.page.goto("https://jcr.clarivate.com/jcr/home", wait_until="domcontentloaded", timeout=30000)
             try:
-                if "jcr/home" not in self.page.url:
-                    self.page.goto("https://jcr.clarivate.com/jcr/home", wait_until="networkidle", timeout=30000)
-                else:
-                    # Even if on home, sometimes good to reload or ensure input is clear
-                    # But finding the input should handle it.
-                    pass
+                self.page.wait_for_selector(search_input_sel, state="visible", timeout=10000)
             except:
-                # If check fails, try force goto
-                self.page.goto("https://jcr.clarivate.com/jcr/home", wait_until="networkidle", timeout=30000)
+                pass # search_input.is_visible check below will handle failure
+            search_input = self.page.locator(search_input_sel).first
             
         print(f"Searching for '{query}'...", file=sys.stderr)
-        # Locate search input
-        search_input = self.page.locator("input[placeholder*='journal'], input[placeholder*='Journal'], input[type='text'].mat-input-element").first
         if not search_input.is_visible():
-            raise Exception("Search input not found")
+            raise Exception("Search input not found even after reloading home")
             
-        search_input.click()
+        self._handle_cookie_banner() # Check again before interaction
+        try:
+            search_input.click(force=True) # Force through any invisible overlays if possible
+        except:
+            self._handle_cookie_banner()
+            search_input.click(force=True)
+
         search_input.fill("")
         search_input.fill(query)
         
@@ -96,94 +153,31 @@ class JCRBackend:
         """Clicks the exact journal name and extracts short name from URL."""
         print(f"Resolving short name for '{journal_name}'...", file=sys.stderr)
         
-        # Find the specific option again to click it
-        options = self.page.locator(".journal-title, mat-option span").all()
-        target_opt = None
-        
-        for opt in options:
-            if opt.inner_text().strip() == journal_name:
-                target_opt = opt
-                break
-        
-        if not target_opt:
-            raise Exception(f"Option '{journal_name}' no longer found.")
+        # FAST TRACK: Check if we already intercepted the key
+        if journal_name.strip() in self.known_journals:
+            print(" -> Found in API cache! Instant resolve.", file=sys.stderr)
+            return self.known_journals[journal_name.strip()]
+        if journal_name.strip().lower() in self.known_journals:
+            print(" -> Found in API cache! Instant resolve.", file=sys.stderr)
+            return self.known_journals[journal_name.strip().lower()]
             
-        # Try to detect new page or navigation
-        new_page = None
-        navigated = False
+        print(" -> Not in cache, falling back to UI navigation...", file=sys.stderr)
         
-        # Check for new page event
+        # Find the specific option again to click it
+        # We use get_by_text with exact=True to ensure we pick the right one
         try:
-            with self.context.expect_page(timeout=5000) as page_info:
-                # Primary click
-                try:
-                    target_opt.click(timeout=2000)
-                except:
-                    target_opt.click(force=True)
-            new_page = page_info.value
+            self.page.locator(".journal-title, mat-option span").get_by_text(journal_name, exact=True).first.click()
         except:
-            # No new page detected immediately
-            pass
+            # Fallback for some overlay or detachment
+            self.page.locator(".journal-title, mat-option span").get_by_text(journal_name, exact=True).first.click(force=True)
 
-        if new_page:
-            self.page = new_page
-            self.page.wait_for_load_state()
-            navigated = True
-        else:
-             # Check if we navigated in current page
-             try:
-                 self.page.wait_for_url(lambda u: "journal-profile" in u, timeout=5000)
-                 navigated = True
-             except:
-                 pass
-        
-        if not navigated:
-             print("Click failed or no nav, trying keyboard fallback...", file=sys.stderr)
-             try:
-                 search_input = self.page.locator("input[placeholder*='journal'], input[placeholder*='Journal'], input[type='text'].mat-input-element").first
-                 search_input.click()
-                 search_input.fill(journal_name)
-                 time.sleep(2)
-                 self.page.keyboard.press("ArrowDown")
-                 time.sleep(0.5)
-                 
-                 # Expect new page on Enter?
-                 try:
-                     with self.context.expect_page(timeout=5000) as page_info:
-                         self.page.keyboard.press("Enter")
-                     new_page = page_info.value
-                     if new_page:
-                         self.page = new_page
-                         self.page.wait_for_load_state()
-                         navigated = True
-                 except:
-                     # Maybe SPA nav
-                     self.page.keyboard.press("Enter")
-                     try:
-                         self.page.wait_for_url(lambda u: "journal-profile" in u, timeout=10000)
-                         navigated = True
-                     except:
-                         pass
-             except Exception as e:
-                 print(f"Keyboard fallback error: {e}", file=sys.stderr)
-
-        # Final wait/check
-        if not navigated:
-             # Check for any new pages that might have appeared silently
-             if len(self.context.pages) > 1:
-                 # Switch to the latest page
-                 self.page = self.context.pages[-1]
-                 self.page.wait_for_load_state()
-                 if "journal-profile" in self.page.url:
-                     navigated = True
-
-        if not navigated:
-             try:
-                 self.page.wait_for_url(lambda u: "journal-profile" in u, timeout=20000)
-             except:
-                  if "search-results" in self.page.url:
-                      pass
-                  raise Exception("Navigation to journal profile failed (timeout).")
+        # Wait for navigation to profile
+        try:
+            self.page.wait_for_url(lambda u: "journal-profile" in u, timeout=20000)
+        except:
+             # Just in case we are already there or something went wrong
+             if "journal-profile" not in self.page.url:
+                 raise Exception("Navigation to journal profile failed after clicking result.")
             
         # Extract
         current_url = self.page.url
