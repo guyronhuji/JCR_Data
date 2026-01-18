@@ -99,11 +99,12 @@ jobs:
           path: release_assets/macos
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             release_assets/windows/JCR_Analyzer.exe
             release_assets/macos/jcr_gui_macos.zip
-          draft: true
+          draft: false
           prerelease: false
           generate_release_notes: true
+          fail_on_unmatched_files: true
