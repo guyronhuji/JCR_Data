@@ -294,6 +294,38 @@ def get_jcr_data(journal_name):
         jif_rankings = extract_carousel_data("Rank by Journal Impact Factor", stopper_title="Rank by Journal Citation Indicator (JCI)", expand_history=True, metric_name="JIF")
         jci_rankings = extract_carousel_data("Rank by Journal Citation Indicator (JCI)", stopper_title="Contributions by Organization", expand_history=True, metric_name="JCI")
         
+        # New: Scrape history of JIF values
+        jif_history = []
+        try:
+             # Look for "Journal's perfromance" or "Key Indicators"
+             # Usually strictly "Key Indicators" in recent JCR
+             key_ind_header = page.locator("xpath=//*[contains(text(), 'Key Indicators')]").first
+             if key_ind_header.is_visible():
+                  key_ind_header.scroll_into_view_if_needed()
+                  # Find the table following it
+                  # It might be in a card.
+                  table = key_ind_header.locator("xpath=following::table").first
+                  if table.is_visible():
+                       rows = table.locator("tbody tr").all()
+                       print(f"Found Key Indicators table with {len(rows)} rows.", file=sys.stderr)
+                       for row in rows:
+                            cells = row.locator("td").all()
+                            if len(cells) > 1:
+                                 y_text = cells[0].inner_text().strip()
+                                 # JIF is usually column 2 (index 1) or labeled "Journal Impact Factor"
+                                 # Let's assume standard layout: Year | Total Citations | JIF | ...
+                                 # We can check headers but heuristics are faster if layout is stable.
+                                 # Standard: [Year, Total Citations, JIF, JIF Percentile, ...]
+                                 if len(cells) >= 3:
+                                      jif_text = cells[2].inner_text().strip()
+                                      if y_text.isdigit() and (jif_text.replace('.', '', 1).isdigit() or jif_text == "N/A"):
+                                           jif_history.append({
+                                                "year": int(y_text),
+                                                "jif": jif_text
+                                           })
+        except Exception as e:
+             print(f"Error extracting history: {e}", file=sys.stderr)
+
         browser.close()
         
         if metrics["jif_percentile"] == "N/A" and jif_rankings:
@@ -302,6 +334,9 @@ def get_jcr_data(journal_name):
                 if item["year"] == metrics["year"]:
                     metrics["jif_percentile"] = item["percentile"]
                     break
+
+        # Attach history
+        metrics["history"] = jif_history
 
         return {
             "metrics": metrics,

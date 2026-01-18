@@ -342,11 +342,30 @@ class JCRApp(ctk.CTk):
     def extract_year_stats(self, data, target_year):
         """Extracts JIF, Rank, and Quartile for the specific year."""
         stats = {
-            "jif": data.get("metrics", {}).get("jif", "N/A"),
-            "jif_year": data.get("metrics", {}).get("year", "N/A"),
+            "jif": "N/A",
+            "jif_year": target_year,
             "categories": []
         }
         
+        # 1. Look for Historical JIF
+        history = data.get("metrics", {}).get("history", [])
+        # If history exists, prefer it
+        found_jif = False
+        for h in history:
+             if h.get("year") == target_year:
+                  stats["jif"] = h.get("jif", "N/A")
+                  found_jif = True
+                  break
+        
+        # If not found in history (or history empty), and target year is latest, use top-level
+        if not found_jif:
+             latest_year = data.get("metrics", {}).get("year")
+             if latest_year == target_year:
+                  stats["jif"] = data.get("metrics", {}).get("jif", "N/A")
+             else:
+                  # Maybe they requested a year we don't have exact JIF for, but we have ranking?
+                  pass
+
         # Look for rankings in that year
         for cat, rows in data.get("rankings", {}).items():
             for row in rows:
@@ -363,8 +382,8 @@ class JCRApp(ctk.CTk):
         
         stats_str = ""
         if stats:
-            stats_str += f"Latest JIF ({stats['jif_year']}): {stats['jif']}\n"
-            stats_str += f"\nStats for {year}:\n"
+            stats_str += f"JIF ({stats['jif_year']}): {stats['jif']}\n"
+            stats_str += f"\nCategory Stats for {year}:\n"
             if stats["categories"]:
                 for cat in stats["categories"]:
                     stats_str += f"  - {cat['name']}:\n"
