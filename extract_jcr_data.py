@@ -7,7 +7,8 @@ import urllib.parse
 from playwright.sync_api import sync_playwright
 from journal_shortname_resolver import get_journal_shortname
 
-def get_jcr_data(journal_name):
+def get_jcr_data(journal_name, target_year=None):
+    print(f"DEBUG: get_jcr_data called with year={target_year}", file=sys.stderr)
     with sync_playwright() as p:
         launch_args = {
             "headless": True,
@@ -189,7 +190,7 @@ def get_jcr_data(journal_name):
                     if found_new_data:
                          pass
 
-                # If not JCI or failed to find sibling, try logic for JIF (Expansion + Table)
+                # If not JIF or failed to find sibling, try logic for JIF (Expansion + Table)
                 if metric_name == "JIF" or (metric_name == "JCI" and not found_new_data and relevant_indices):
                      
                     if expand_history and relevant_indices:
@@ -297,37 +298,67 @@ def get_jcr_data(journal_name):
         # New: Scrape history of JIF values
         jif_history = []
         try:
-             # Look for "Journal's perfromance" or "Key Indicators"
-             # Usually strictly "Key Indicators" in recent JCR
-             key_ind_header = page.locator("xpath=//*[contains(text(), 'Key Indicators')]").first
-             if key_ind_header.is_visible():
-                  key_ind_header.scroll_into_view_if_needed()
-                  # Find the table following it
-                  # It might be in a card.
-                  table = key_ind_header.locator("xpath=following::table").first
-                  if table.is_visible():
-                       rows = table.locator("tbody tr").all()
-                       print(f"Found Key Indicators table with {len(rows)} rows.", file=sys.stderr)
-                       for row in rows:
-                            cells = row.locator("td").all()
-                            if len(cells) > 1:
-                                 y_text = cells[0].inner_text().strip()
-                                 # JIF is usually column 2 (index 1) or labeled "Journal Impact Factor"
-                                 # Let's assume standard layout: Year | Total Citations | JIF | ...
-                                 # We can check headers but heuristics are faster if layout is stable.
-                                 # Standard: [Year, Total Citations, JIF, JIF Percentile, ...]
-                                 if len(cells) >= 3:
-                                      jif_text = cells[2].inner_text().strip()
-                                      if y_text.isdigit() and (jif_text.replace('.', '', 1).isdigit() or jif_text == "N/A"):
-                                           jif_history.append({
-                                                "year": int(y_text),
-                                                "jif": jif_text
-                                           })
+             # Strategy 1: Look for "Key Indicators"
+             # Strategy 2: Look for "Journal Impact Factor" text which should be a column header
+             print("DEBUG: Searching for JIF history table...", file=sys.stderr)
+             
+             targets = ["Key Indicators", "Journal Impact Factor"]
+             found_table = None
+             
+             for t in targets:
+                 try:
+                     el = page.locator(f"xpath=//*[contains(text(), '{t}')]").first
+                     if el.is_visible():
+                         print(f"DEBUG: Found text '{t}'. Looking for parent table...", file=sys.stderr)
+                         # It might be IN a table (th) or ABOVE a table
+                         # Check if it IS a TH/TD
+                         tag = el.evaluate("el => el.tagName")
+                         if tag in ["TH", "TD", "TR", "THEAD"]:
+                              found_table = el.locator("xpath=ancestor::table").first
+                         else:
+                              found_table = el.locator("xpath=following::table").first
+                         
+                         if found_table.is_visible():
+                             break
+                 except:
+                     pass
+            
+             if found_table:
+                  rows = found_table.locator("tbody tr").all()
+                  print(f"DEBUG: Found table with {len(rows)} rows.", file=sys.stderr)
+                  for row in rows:
+                       cells = row.locator("td").all()
+                       if len(cells) > 1:
+                            y_text = cells[0].inner_text().strip()
+                            
+                            # Heuristic: Find JIF column
+                            # Usually col 2 (index 1) or 3 (index 2)
+                            # Let's iterate cells to find the matching decimal/number
+                            # Or just grab index 2 as per previous
+                            
+                            jif_val = "N/A"
+                            if len(cells) >= 3:
+                                 # strict
+                                 jif_val = cells[2].inner_text().strip()
+                            
+                            # If that failed or is not a number, try other cells?
+                            # Let's stick to index 2 for now, or index 1?
+                            # Check header? Too complex for quick fix.
+                            # Just try to parse.
+                            
+                            if y_text.isdigit():
+                                 jif_history.append({
+                                      "year": int(y_text),
+                                      "jif": jif_val
+                                 })
+                                 print(f"DEBUG: Extracted {y_text}: {jif_val}", file=sys.stderr)
+             else:
+                  # Fallback: Print all visible text to debug?
+                  print("DEBUG: Could not locate JIF table.", file=sys.stderr)
+                  
         except Exception as e:
              print(f"Error extracting history: {e}", file=sys.stderr)
 
-        browser.close()
-        
         if metrics["jif_percentile"] == "N/A" and jif_rankings:
              first_cat = list(jif_rankings.keys())[0]
              for item in jif_rankings[first_cat]:
@@ -337,6 +368,97 @@ def get_jcr_data(journal_name):
 
         # Attach history
         metrics["history"] = jif_history
+
+        print("DEBUG: Approaching JIF navigation block...", file=sys.stderr)
+        # EXPLICIT NAVIGATION FOR TARGET YEAR JIF
+        if target_year:
+             print(f"DEBUG: Inside block. Navigating to specific year {target_year} to get JIF...", file=sys.stderr)
+             try:
+                 encoded_name_yr = urllib.parse.quote(journal_name)
+                 url_yr = f"https://jcr.clarivate.com/jcr-jp/journal-profile?journal={encoded_name_yr}&year={target_year}&fromPage=%2Fjcr%2Fhome"
+                 page.goto(url_yr, wait_until="domcontentloaded", timeout=45000)
+                 
+                 found = False
+
+                 # Wait for JIF value to actually populate (async loading)
+                 try:
+                      page.wait_for_selector("text=JOURNAL IMPACT FACTOR", timeout=10000)
+                      # Spin loop for text in .value
+                      for _ in range(20):
+                           # Check .jif-values .value
+                           val_el = page.locator(".jif-values .value").first
+                           if val_el.is_visible():
+                               txt = val_el.inner_text().strip()
+                               if txt and txt.replace('.', '', 1).isdigit():
+                                   print(f"Extracted specific JIF via poll for {target_year}: {txt}", file=sys.stderr)
+                                   metrics["specific_year_jif"] = txt
+                                   metrics["specific_year"] = target_year
+                                   found = True
+                                   break
+                           time.sleep(0.5)
+                 except: pass
+                 
+                 # Try 1: Look for the specific label and the next element via JS (Backup)
+                 if not found:
+                     try:
+                          header = page.locator("xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'journal impact factor')]").first
+                          if header.is_visible():
+                              print(f"DEBUG: Found JIF Header: '{header.inner_text()}'", file=sys.stderr)
+                              
+                              jif_val = header.evaluate(r"""(header) => {
+                                  function isJif(s) { 
+                                     if (!s) return false;
+                                     return /^\d+(\.\d+)?$/.test(s.trim()); 
+                                  }
+                                  
+                                  // 1. Check direct siblings (next)
+                                  let sib = header.nextElementSibling;
+                                  if (sib && isJif(sib.innerText)) return sib.innerText.trim();
+                                  
+                                  // 2. Check parent's siblings (if header is wrapped)
+                                  let parent = header.parentElement;
+                                  if (parent) {
+                                       let pSib = parent.nextElementSibling;
+                                       if (pSib) {
+                                            if (isJif(pSib.innerText)) return pSib.innerText.trim();
+                                            let valChild = pSib.querySelector('.value') || pSib.querySelector('.jif-value') || pSib.querySelector('p'); 
+                                            if (valChild && isJif(valChild.innerText)) return valChild.innerText.trim();
+                                       }
+                                       let children = parent.children;
+                                       for (let i=0; i<children.length; i++) {
+                                           if (children[i] === header) continue;
+                                           if (isJif(children[i].innerText)) return children[i].innerText.trim();
+                                           let v = children[i].querySelector('.value');
+                                           if (v && isJif(v.innerText)) return v.innerText.trim();
+                                       }
+                                  }
+                                  return null;
+                              }""")
+                              
+                              if jif_val:
+                                  print(f"Extracted specific JIF via JS for {target_year}: {jif_val}", file=sys.stderr)
+                                  metrics["specific_year_jif"] = jif_val
+                                  metrics["specific_year"] = target_year
+                                  found = True
+                     except Exception as e:
+                         print(f"JS extraction error: {e}", file=sys.stderr)
+                 
+                 if not found:
+                     jif_val_el = page.locator(".jif-value, .value, p.value").first
+                     if jif_val_el.is_visible():
+                         val = jif_val_el.inner_text().strip()
+                         if val.replace('.', '', 1).isdigit():
+                             print(f"Extracted specific JIF (fallback) for {target_year}: {val}", file=sys.stderr)
+                             metrics["specific_year_jif"] = val
+                             metrics["specific_year"] = target_year
+                             found = True
+                             
+                 if not found:
+                     print(f"JIF value element not found for year {target_year}", file=sys.stderr)
+             except Exception as e:
+                 print(f"Failed to extract specific JIF: {e}", file=sys.stderr)
+
+        browser.close()
 
         return {
             "metrics": metrics,
@@ -359,7 +481,12 @@ def save_csv(data, filename):
     print(f"CSV saved to {filename}", file=sys.stderr)
 
 if __name__ == "__main__":
-    raw_target = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "BIOETHICS"
+    raw_target = sys.argv[1] if len(sys.argv) > 1 else "BIOETHICS"
+    target_yr = None
+    if len(sys.argv) > 2:
+         try:
+             target_yr = int(sys.argv[2])
+         except: pass
     
     # 1. Try to resolve the short name if it looks like a full title or has spaces
     resolved_target = None
@@ -377,7 +504,7 @@ if __name__ == "__main__":
         print(f"Falling back to original name: '{raw_target}'", file=sys.stderr)
         final_target = raw_target
 
-    data = get_jcr_data(final_target)
+    data = get_jcr_data(final_target, target_year=target_yr)
     if data:
         print(json.dumps(data, indent=2))
         # Save validation check: use final_target for filename

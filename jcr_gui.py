@@ -1,11 +1,12 @@
 
 import customtkinter as ctk
-import tkinter as tk # Still needed for some constants or mixins if needed
-from tkinter import messagebox, filedialog # CTk messageboxes are different, but we can reuse or switch
+import tkinter as tk
+from tkinter import messagebox, filedialog
 import threading
 import csv
 import os
 import sys
+import queue
 
 # --- CONFIG ---
 ctk.set_appearance_mode("System")
@@ -45,22 +46,9 @@ def install_chromium():
     
     try:
         driver_executable, driver_cli = compute_driver_executable()
-        # If frozen, driver_executable might be ok, but let's be safe.
-        # Typically compute_driver_executable returns the path to the node executable or python wrapper.
-        
-        # On PyInstaller, we might need to rely on the fact that 'playwright' module is importable.
-        # But we need to RUN the install command.
-        
-        # Simpler approach: use python -m playwright install chromium
-        # BUT we might be in a frozen app without 'python'.
-        
-        # Using the computed driver executable is the most robust internal way:
         cmd = [driver_executable, "install", "chromium"]
         if sys.platform == "win32":
-             # On windows, ensure we don't pop up a window if possible, OR popping up is good so they see it?
-             # Let's let it output to stdout/err and we log it?
              pass
-             
         subprocess.run(cmd, check=True)
         return True
     except Exception as e:
@@ -121,11 +109,45 @@ class ResultListFrame(ctk.CTkScrollableFrame):
             btn.pack(fill="x", padx=2, pady=2)
             self.buttons.append(btn)
 
+class DebugWindow(ctk.CTkToplevel):
+    def __init__(self, master):
+        super().__init__(master)
+        self.title("Debug Log")
+        self.geometry("600x400")
+        self.text_area = ctk.CTkTextbox(self, wrap="none")
+        self.text_area.pack(expand=True, fill="both", padx=10, pady=10)
+        
+    def log(self, text):
+        self.text_area.configure(state="normal")
+        self.text_area.insert(tk.END, text)
+        self.text_area.see(tk.END)
+        self.text_area.configure(state="disabled")
+
+class RedirectedStderr:
+    def __init__(self, app_ref, original_stderr):
+        self.app_ref = app_ref
+        self.original_stderr = original_stderr
+
+    def write(self, message):
+        self.original_stderr.write(message)
+        # Schedule update on UI thread
+        if message:
+            self.app_ref.after(0, lambda: self.app_ref.log_debug(message))
+
+    def flush(self):
+        self.original_stderr.flush()
+
 class JCRApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("JCR Data Analyzer")
-        self.geometry("900x700")
+        self.geometry("1100x800") # Bigger output window
+        
+        # Setup Debug redirection
+        self.debug_window = None
+        self.debug_buffer = [] # Store logs even if window closed
+        self.original_stderr = sys.stderr
+        sys.stderr = RedirectedStderr(self, self.original_stderr)
         
         # Main Layout
         self.grid_columnconfigure(0, weight=1)
@@ -164,22 +186,38 @@ class JCRApp(ctk.CTk):
         self.browse_btn = ctk.CTkButton(self.input_frame, text="Browse", width=100, command=self.browse_dir)
         self.browse_btn.grid(row=3, column=2, padx=10, pady=10)
         
-        # Run Button
+        # Run Button & Debug
         self.run_btn = ctk.CTkButton(self.input_frame, text="Get Data & Analyze", command=self.start_process, fg_color="#2CC985", hover_color="#229966") # Greenish
-        self.run_btn.grid(row=4, column=0, columnspan=3, padx=20, pady=20, sticky="ew")
-
+        self.run_btn.grid(row=4, column=0, columnspan=2, padx=(20, 5), pady=20, sticky="ew")
+        
+        self.debug_btn = ctk.CTkButton(self.input_frame, text="Show Debug Log", width=120, command=self.open_debug_window)
+        self.debug_btn.grid(row=4, column=2, padx=(5, 20), pady=20)
+        
         # --- OUTPUT FRAME ---
         self.output_frame = ctk.CTkFrame(self)
         self.output_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
         self.output_frame.grid_rowconfigure(0, weight=1)
         self.output_frame.grid_columnconfigure(0, weight=1)
         
-        self.result_text = ctk.CTkTextbox(self.output_frame, state="disabled", wrap="none")
+        self.result_text = ctk.CTkTextbox(self.output_frame, state="disabled", wrap="none", font=("Courier", 12))
         self.result_text.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
         # Status Bar
         self.status_label = ctk.CTkLabel(self, text="Ready", anchor="w")
         self.status_label.grid(row=2, column=0, padx=20, pady=(0, 10), sticky="ew")
+
+    def open_debug_window(self):
+        if self.debug_window is None or not self.debug_window.winfo_exists():
+            self.debug_window = DebugWindow(self)
+            # Re-populate
+            self.debug_window.log("".join(self.debug_buffer))
+        else:
+            self.debug_window.focus()
+
+    def log_debug(self, msg):
+        self.debug_buffer.append(msg)
+        if self.debug_window and self.debug_window.winfo_exists():
+            self.debug_window.log(msg)
 
     def browse_dir(self):
         d = filedialog.askdirectory(initialdir=self.out_dir_entry.get())
@@ -266,6 +304,8 @@ class JCRApp(ctk.CTk):
 
             # 1. Resolve Name
             self.update_status("Resolving journal name...")
+            self.log_main(f"Starting analysis for: {journal_input}\n")
+            
             backend = None
             try:
                 backend = get_journal_shortname() 
@@ -282,13 +322,13 @@ class JCRApp(ctk.CTk):
                 
                 if not target_journal:
                      target_journal = results[0]
-                     self.log(f"No exact match. Using: '{target_journal}'")
+                     self.log_main(f"No exact match. Using: '{target_journal}'\n")
                 
                 short_name = backend.select_and_resolve(target_journal)
-                self.log(f"Resolved '{journal_input}' -> '{short_name}'")
+                self.log_main(f"Resolved '{journal_input}' -> '{short_name}'\n")
                 
             except Exception as e:
-                self.log(f"Could not resolve shortname (using input): {e}")
+                self.log_main(f"Could not resolve shortname (using input): {e}\n")
                 short_name = journal_input
             finally:
                 if backend:
@@ -296,7 +336,7 @@ class JCRApp(ctk.CTk):
                 
             # 2. Scrape Data
             self.update_status(f"Scraping JCR data for '{short_name}'...")
-            data = get_jcr_data(short_name)
+            data = get_jcr_data(short_name, target_year=start_year)
             
             if not data:
                 self.update_status("Error: No data found.")
@@ -306,7 +346,7 @@ class JCRApp(ctk.CTk):
             # 3. Save Scraped CSV
             csv_filename = os.path.join(out_dir, f"{short_name}_jcr_data.csv")
             save_jcr_data_csv(data, csv_filename)
-            self.log(f"Saved raw data to {csv_filename}")
+            self.log_main(f"Saved raw data to {csv_filename}\n")
             
             # 4. Analyze
             self.update_status("Analyzing data...")
@@ -319,25 +359,27 @@ class JCRApp(ctk.CTk):
             # 6. Save Analysis CSV
             out_filename = os.path.join(out_dir, f"{short_name}_averages_{start_year}.csv")
             self.save_analysis_csv(averages, out_filename)
-            self.log(f"Saved averages to {out_filename}")
+            # Ensure newline before this log to avoid same-line print
+            self.log_main(f"\n> Saved averages to {out_filename}\n")
             
             self.update_status("Done.")
             
         except Exception as e:
             self.update_status(f"Error: {e}")
-            print(e)
+            print(f"Process Error: {e}", file=sys.stderr)
         finally:
             self.enable_btn()
 
     def result_to_table_str(self, results):
         lines = []
-        header = f"{'Metric':<10} | {'Category':<40} | {'5-Yr Avg Percentile':<20}"
+        # Increased spacing as requested
+        header = f"{'Metric':<10} | {'Category':<50} | {'5-Yr Avg Percentile':<20}"
         lines.append(header)
         lines.append("-" * len(header))
         for metric, cats in results.items():
             for cat, val in cats.items():
-                lines.append(f"{metric:<10} | {cat:<40} | {val:<20}")
-        return "\n".join(lines)
+                lines.append(f"{metric:<10} | {cat:<50} | {val:<20}")
+        return "\n".join(lines) + "\n"
 
     def extract_year_stats(self, data, target_year):
         """Extracts JIF, Rank, and Quartile for the specific year."""
@@ -347,24 +389,30 @@ class JCRApp(ctk.CTk):
             "categories": []
         }
         
-        # 1. Look for Historical JIF
-        history = data.get("metrics", {}).get("history", [])
-        # If history exists, prefer it
-        found_jif = False
-        for h in history:
-             if h.get("year") == target_year:
-                  stats["jif"] = h.get("jif", "N/A")
-                  found_jif = True
-                  break
+        # 1. Look for Explicit Specific Year JIF (from navigation)
+        specific_jif = data.get("metrics", {}).get("specific_year_jif")
+        specific_year = data.get("metrics", {}).get("specific_year")
         
-        # If not found in history (or history empty), and target year is latest, use top-level
-        if not found_jif:
-             latest_year = data.get("metrics", {}).get("year")
-             if latest_year == target_year:
-                  stats["jif"] = data.get("metrics", {}).get("jif", "N/A")
-             else:
-                  # Maybe they requested a year we don't have exact JIF for, but we have ranking?
-                  pass
+        if specific_jif and specific_year == target_year:
+            stats["jif"] = specific_jif
+            stats["jif_year"] = specific_year # Force update year label 
+        else:
+            # Fallback to History
+            history = data.get("metrics", {}).get("history", [])
+            found_jif = False
+            for h in history:
+                if h.get("year") == target_year:
+                    stats["jif"] = h.get("jif", "N/A")
+                    found_jif = True
+                    break
+            
+            # If not found in history (or history empty), and target year is latest, use top-level
+            if not found_jif:
+                latest_year = data.get("metrics", {}).get("year")
+                if latest_year == target_year:
+                    stats["jif"] = data.get("metrics", {}).get("jif", "N/A")
+                else:
+                    pass
 
         # Look for rankings in that year
         for cat, rows in data.get("rankings", {}).items():
@@ -395,7 +443,6 @@ class JCRApp(ctk.CTk):
 
         def update_ui():
             self.result_text.configure(state="normal")
-            self.result_text.insert(tk.END, f"Analysis for {journal} (Start Year: {year})\n\n")
             if stats_str:
                 self.result_text.insert(tk.END, stats_str)
             self.result_text.insert(tk.END, table_str)
@@ -413,10 +460,10 @@ class JCRApp(ctk.CTk):
     def update_status(self, msg):
         self.after(0, lambda: self.status_label.configure(text=msg))
         
-    def log(self, msg):
+    def log_main(self, msg):
         def _log():
             self.result_text.configure(state="normal")
-            self.result_text.insert(tk.END, f"> {msg}\n")
+            self.result_text.insert(tk.END, msg)
             self.result_text.see(tk.END)
             self.result_text.configure(state="disabled")
         self.after(0, _log)
@@ -443,8 +490,7 @@ def load_modules(app_instance, loading_label, loading_win):
     except Exception as e:
         if log_file:
             with open(log_file, "a") as f: f.write(f"Lazy import failed: {e}\n")
-        # messagebox replacement? or just print
-        print(f"Error loading modules: {e}")
+        print(f"Error loading modules: {e}", file=sys.stderr)
         app_instance.destroy()
         return
 
@@ -463,7 +509,6 @@ if __name__ == "__main__":
         app = JCRApp()
         app.withdraw()
         
-        # Splash Screen (Now just a small separate window or Toplevel, but simpler to use Standard Tk for splash to avoid theming issues before load)
         splash = tk.Toplevel()
         splash.title("Loading...")
         w, h = 300, 100

@@ -1,0 +1,641 @@
+Resolving short name for 'ETHOS'...
+DEBUG: Found 1 potential options.
+DEBUG: Option text: 'ETHOS'
+Found match: 'ETHOS'. Clicking...
+Click didn't trigger navigation, trying Keyboard (ArrowDown + Enter)...
+Landed on Search Results page. Finding journal link...
+Found result link. Clicking...
+New tab opened. Switching context...
+Using resolved short name: 'ETHOS'
+DEBUG: get_jcr_data called with year=2024
+Checking for latest available year for 'ETHOS'...
+Navigating to https://jcr.clarivate.com/jcr-jp/journal-profile?journal=ETHOS&year=2025&fromPage=%2Fjcr%2Fhome...
+Extracting data for section: 'Rank by Journal Impact Factor'
+Iteration 0: found 5 cats.
+  Extracted 28 years for ANTHROPOLOGY
+  Extracted 28 years for PSYCHOLOGY, MULTIDISCIPLINARY
+  Extracted 26 years for PSYCHOLOGY
+Extracting data for section: 'Rank by Journal Citation Indicator (JCI)'
+Iteration 0: found 5 cats.
+  Extracted 8 years (Sibling Text) for ANTHROPOLOGY
+  Extracted 8 years (Sibling Text) for PSYCHOLOGY, MULTIDISCIPLINARY
+DEBUG: Searching for JIF history table...
+DEBUG: Found text 'Journal Impact Factor'. Looking for parent table...
+DEBUG: Found table with 0 rows.
+DEBUG: Approaching JIF navigation block...
+DEBUG: Inside block. Navigating to specific year 2024 to get JIF...
+DEBUG: Found JIF Header: 'Journal Impact Factor'
+JIF value element not found for year 2024
+{
+  "metrics": {
+    "journal": "ETHOS",
+    "year": 2025,
+    "jif": "N/A",
+    "five_year_jif": "N/A",
+    "jif_percentile": "N/A",
+    "history": []
+  },
+  "rankings": {
+    "ANTHROPOLOGY": [
+      {
+        "year": 2024,
+        "rank": "41/141",
+        "quartile": "Q2",
+        "percentile": "71.3"
+      },
+      {
+        "year": 2023,
+        "rank": "91/139",
+        "quartile": "Q3",
+        "percentile": "34.9"
+      },
+      {
+        "year": 2022,
+        "rank": "67/92",
+        "quartile": "Q3",
+        "percentile": "27.7"
+      },
+      {
+        "year": 2021,
+        "rank": "58/93",
+        "quartile": "Q3",
+        "percentile": "38.17"
+      },
+      {
+        "year": 2020,
+        "rank": "50/93",
+        "quartile": "Q3",
+        "percentile": "46.77"
+      },
+      {
+        "year": 2019,
+        "rank": "48/91",
+        "quartile": "Q3",
+        "percentile": "47.80"
+      },
+      {
+        "year": 2018,
+        "rank": "29/90",
+        "quartile": "Q2",
+        "percentile": "68.33"
+      },
+      {
+        "year": 2017,
+        "rank": "41/85",
+        "quartile": "Q2",
+        "percentile": "52.35"
+      },
+      {
+        "year": 2016,
+        "rank": "46/82",
+        "quartile": "Q3",
+        "percentile": "44.51"
+      },
+      {
+        "year": 2015,
+        "rank": "37/84",
+        "quartile": "Q2",
+        "percentile": "56.55"
+      },
+      {
+        "year": 2014,
+        "rank": "37/84",
+        "quartile": "Q2",
+        "percentile": "56.55"
+      },
+      {
+        "year": 2013,
+        "rank": "51/82",
+        "quartile": "Q3",
+        "percentile": "38.41"
+      },
+      {
+        "year": 2012,
+        "rank": "31/83",
+        "quartile": "Q2",
+        "percentile": "63.25"
+      },
+      {
+        "year": 2011,
+        "rank": "31/81",
+        "quartile": "Q2",
+        "percentile": "62.35"
+      },
+      {
+        "year": 2010,
+        "rank": "20/76",
+        "quartile": "Q2",
+        "percentile": "74.34"
+      },
+      {
+        "year": 2009,
+        "rank": "27/68",
+        "quartile": "Q2",
+        "percentile": "61.03"
+      },
+      {
+        "year": 2008,
+        "rank": "43/61",
+        "quartile": "Q3",
+        "percentile": "30.33"
+      },
+      {
+        "year": 2007,
+        "rank": "21/58",
+        "quartile": "Q2",
+        "percentile": "64.66"
+      },
+      {
+        "year": 2006,
+        "rank": "36/53",
+        "quartile": "Q3",
+        "percentile": "33.02"
+      },
+      {
+        "year": 2005,
+        "rank": "28/51",
+        "quartile": "Q3",
+        "percentile": "46.08"
+      },
+      {
+        "year": 2004,
+        "rank": "33/50",
+        "quartile": "Q3",
+        "percentile": "35.00"
+      },
+      {
+        "year": 2003,
+        "rank": "35/53",
+        "quartile": "Q3",
+        "percentile": "34.91"
+      },
+      {
+        "year": 2002,
+        "rank": "38/53",
+        "quartile": "Q3",
+        "percentile": "29.25"
+      },
+      {
+        "year": 2001,
+        "rank": "30/52",
+        "quartile": "Q3",
+        "percentile": "43.27"
+      },
+      {
+        "year": 2000,
+        "rank": "32/51",
+        "quartile": "Q3",
+        "percentile": "38.24"
+      },
+      {
+        "year": 1999,
+        "rank": "29/49",
+        "quartile": "Q3",
+        "percentile": "41.84"
+      },
+      {
+        "year": 1998,
+        "rank": "34/49",
+        "quartile": "Q3",
+        "percentile": "31.63"
+      },
+      {
+        "year": 1997,
+        "rank": "24/48",
+        "quartile": "Q2",
+        "percentile": "51.04"
+      }
+    ],
+    "PSYCHOLOGY, MULTIDISCIPLINARY": [
+      {
+        "year": 2024,
+        "rank": "126/223",
+        "quartile": "Q3",
+        "percentile": "43.7"
+      },
+      {
+        "year": 2023,
+        "rank": "171/219",
+        "quartile": "Q4",
+        "percentile": "22.1"
+      },
+      {
+        "year": 2022,
+        "rank": "138/147",
+        "quartile": "Q4",
+        "percentile": "6.5"
+      },
+      {
+        "year": 2021,
+        "rank": "124/148",
+        "quartile": "Q4",
+        "percentile": "16.55"
+      },
+      {
+        "year": 2020,
+        "rank": "103/140",
+        "quartile": "Q3",
+        "percentile": "26.79"
+      },
+      {
+        "year": 2019,
+        "rank": "87/138",
+        "quartile": "Q3",
+        "percentile": "37.32"
+      },
+      {
+        "year": 2018,
+        "rank": "63/137",
+        "quartile": "Q2",
+        "percentile": "54.38"
+      },
+      {
+        "year": 2017,
+        "rank": "87/135",
+        "quartile": "Q3",
+        "percentile": "35.93"
+      },
+      {
+        "year": 2016,
+        "rank": "80/129",
+        "quartile": "Q3",
+        "percentile": "38.37"
+      },
+      {
+        "year": 2015,
+        "rank": "67/129",
+        "quartile": "Q3",
+        "percentile": "48.45"
+      },
+      {
+        "year": 2014,
+        "rank": "69/129",
+        "quartile": "Q3",
+        "percentile": "46.90"
+      },
+      {
+        "year": 2013,
+        "rank": "91/129",
+        "quartile": "Q3",
+        "percentile": "29.84"
+      },
+      {
+        "year": 2012,
+        "rank": "65/126",
+        "quartile": "Q3",
+        "percentile": "48.81"
+      },
+      {
+        "year": 2011,
+        "rank": "63/125",
+        "quartile": "Q3",
+        "percentile": "50.00"
+      },
+      {
+        "year": 2010,
+        "rank": "52/120",
+        "quartile": "Q2",
+        "percentile": "57.08"
+      },
+      {
+        "year": 2009,
+        "rank": "58/112",
+        "quartile": "Q3",
+        "percentile": "48.66"
+      },
+      {
+        "year": 2008,
+        "rank": "74/101",
+        "quartile": "Q3",
+        "percentile": "27.23"
+      },
+      {
+        "year": 2007,
+        "rank": "46/102",
+        "quartile": "Q2",
+        "percentile": "55.39"
+      },
+      {
+        "year": 2006,
+        "rank": "76/99",
+        "quartile": "Q4",
+        "percentile": "23.74"
+      },
+      {
+        "year": 2005,
+        "rank": "63/101",
+        "quartile": "Q3",
+        "percentile": "38.12"
+      },
+      {
+        "year": 2004,
+        "rank": "78/100",
+        "quartile": "Q4",
+        "percentile": "22.50"
+      },
+      {
+        "year": 2003,
+        "rank": "75/101",
+        "quartile": "Q3",
+        "percentile": "26.24"
+      },
+      {
+        "year": 2002,
+        "rank": "79/102",
+        "quartile": "Q4",
+        "percentile": "23.04"
+      },
+      {
+        "year": 2001,
+        "rank": "67/100",
+        "quartile": "Q3",
+        "percentile": "33.50"
+      },
+      {
+        "year": 2000,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 1999,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 1998,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 1997,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      }
+    ],
+    "PSYCHOLOGY": [
+      {
+        "year": 2022,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2021,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2020,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2019,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2018,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2017,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2016,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2015,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2014,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2013,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2012,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2011,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2010,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2009,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2008,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2007,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2006,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2005,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2004,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2003,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2002,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2001,
+        "rank": "N/A",
+        "quartile": "N/A",
+        "percentile": "N/A"
+      },
+      {
+        "year": 2000,
+        "rank": "64/105",
+        "quartile": "Q3",
+        "percentile": "39.52"
+      },
+      {
+        "year": 1999,
+        "rank": "62/107",
+        "quartile": "Q3",
+        "percentile": "42.52"
+      },
+      {
+        "year": 1998,
+        "rank": "71/109",
+        "quartile": "Q3",
+        "percentile": "35.32"
+      },
+      {
+        "year": 1997,
+        "rank": "53/108",
+        "quartile": "Q2",
+        "percentile": "51.39"
+      }
+    ]
+  },
+  "jci_rankings": {
+    "ANTHROPOLOGY": [
+      {
+        "year": 2024,
+        "rank": "75/142",
+        "quartile": "Q3",
+        "percentile": "47.54"
+      },
+      {
+        "year": 2023,
+        "rank": "95/139",
+        "quartile": "Q3",
+        "percentile": "32.01"
+      },
+      {
+        "year": 2022,
+        "rank": "86/137",
+        "quartile": "Q3",
+        "percentile": "37.59"
+      },
+      {
+        "year": 2021,
+        "rank": "74/135",
+        "quartile": "Q3",
+        "percentile": "45.56"
+      },
+      {
+        "year": 2020,
+        "rank": "67/134",
+        "quartile": "Q2",
+        "percentile": "50.37"
+      },
+      {
+        "year": 2019,
+        "rank": "62/134",
+        "quartile": "Q2",
+        "percentile": "54.10"
+      },
+      {
+        "year": 2018,
+        "rank": "59/134",
+        "quartile": "Q2",
+        "percentile": "56.34"
+      },
+      {
+        "year": 2017,
+        "rank": "66/134",
+        "quartile": "Q2",
+        "percentile": "51.12"
+      }
+    ],
+    "PSYCHOLOGY, MULTIDISCIPLINARY": [
+      {
+        "year": 2024,
+        "rank": "112/223",
+        "quartile": "Q3",
+        "percentile": "50.00"
+      },
+      {
+        "year": 2023,
+        "rank": "144/219",
+        "quartile": "Q3",
+        "percentile": "34.47"
+      },
+      {
+        "year": 2022,
+        "rank": "131/215",
+        "quartile": "Q3",
+        "percentile": "39.30"
+      },
+      {
+        "year": 2021,
+        "rank": "117/211",
+        "quartile": "Q3",
+        "percentile": "44.79"
+      },
+      {
+        "year": 2020,
+        "rank": "98/197",
+        "quartile": "Q2",
+        "percentile": "50.51"
+      },
+      {
+        "year": 2019,
+        "rank": "91/196",
+        "quartile": "Q2",
+        "percentile": "53.83"
+      },
+      {
+        "year": 2018,
+        "rank": "81/195",
+        "quartile": "Q2",
+        "percentile": "58.72"
+      },
+      {
+        "year": 2017,
+        "rank": "85/186",
+        "quartile": "Q2",
+        "percentile": "54.57"
+      }
+    ]
+  }
+}CSV saved to ETHOS_jcr_data.csv
+
